@@ -30,6 +30,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -40,6 +41,8 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 )
+
+const VERIFIED_EMAIL_SUFFIX = "@vapi.ai"
 
 // SetAuthRoutes sets routes used by auth
 func SetAuthRoutes(e *echo.Echo, cfgProvider *config.ConfigProviderWithRefresh) {
@@ -124,6 +127,10 @@ func authenticateCb(ctx context.Context, oauthCfg *oauth2.Config, provider *oidc
 		user, err := auth.ExchangeCode(ctx, c.Request(), oauthCfg, provider)
 		if err != nil {
 			return err
+		}
+
+		if !strings.HasSuffix(user.IDToken.Claims.Email, VERIFIED_EMAIL_SUFFIX) {
+			return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 		}
 
 		err = auth.SetUser(c, user)
